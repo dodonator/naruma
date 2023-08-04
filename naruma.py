@@ -63,7 +63,8 @@ class NarumaShell(cmd.Cmd):
         self.cwd = cwd
 
     def do_bye(self, arg) -> bool:
-        self.session.close()
+        if hasattr(self, "session"):
+            self.session.close()
         return True
 
 
