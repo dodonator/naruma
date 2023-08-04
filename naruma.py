@@ -91,6 +91,19 @@ class NarumaShell(cmd.Cmd):
         print(f"set current working directory to: {cwd}")
         self.cwd = cwd
 
+    def do_cache(self):
+        """Shows current cache."""
+        if self.cache:
+            note_id, content = self.cache
+            print(f"{note_id} {len(content)}")
+        else:
+            print("empty")
+
+    def do_clear(self):
+        """Clears the cache."""
+        print("cache was cleared")
+        self.cache = None
+
     def do_bye(self, arg) -> bool:
         """Closes program."""
         if hasattr(self, "session"):
