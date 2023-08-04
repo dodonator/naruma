@@ -12,11 +12,18 @@ class NarumaShell(cmd.Cmd):
     remote: str
     cache: Optional[tuple[str, str]]
     cwd: Path
+    _profile: dict
 
     def __init__(self):
         self.cwd = Path.cwd()
         self.cache = None
         super().__init__()
+
+    @property
+    def profile(self):
+        remote = self.remote if hasattr(self, "remote") else None
+        self._profile = {"remote": remote, "cwd": self.cwd}
+        return self._profile
 
     def do_connect(self, remote_url: str) -> None:
         """Connect to a remote HedgeDoc instance.
@@ -112,6 +119,15 @@ class NarumaShell(cmd.Cmd):
         print("cache was cleared")
         self.cache = None
 
+    def do_profile(self, sub_cmd: str):
+        match sub_cmd:
+            case "save":
+                pass
+            case "load":
+                pass
+            case "show":
+                print(self.profile)
+
     def do_bye(self, arg) -> bool:
         """Closes program."""
         if hasattr(self, "session"):
@@ -124,4 +140,9 @@ class NarumaShell(cmd.Cmd):
 
 
 if __name__ == "__main__":
+    try:
+        from rich import print as print
+    except ImportError:
+        pass
+
     NarumaShell().cmdloop()
