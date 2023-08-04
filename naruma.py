@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 from requests import Session, Response, codes
 import time
 
+# TODO: separate profile cwd and download cwd
+
 
 def url_to_profile_path(url: str) -> Path:
     parse_url = urlparse(url)
@@ -49,8 +51,12 @@ class NarumaShell(cmd.Cmd):
         if hasattr(self, "remote"):
             return
 
+        if not remote_url:
+            remote_url = self.remote
+        else:
+            self.remote = remote_url
+
         self.session = Session()
-        self.remote = remote_url
 
         response = self.session.get(remote_url)
         if response.status_code != codes.ok:
@@ -143,6 +149,9 @@ class NarumaShell(cmd.Cmd):
                     filename = input("Please enter filename: ")
                     profile_path = self.cwd / Path(f"{filename}.json")
 
+                if not profile_path.exists():
+                    profile_path.touch()
+
                 with profile_path.open("w", encoding="UTF-8") as stream:
                     json.dump(self.profile, stream)
 
@@ -154,7 +163,8 @@ class NarumaShell(cmd.Cmd):
 
                 with profile_path.open("r", encoding="UTF-8") as stream:
                     profile = json.load(stream)
-                    print(profile)
+
+                print(f"loaded profile {profile}")
                 self.profile = profile
 
             case "list":
