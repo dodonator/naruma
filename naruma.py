@@ -141,7 +141,6 @@ class NarumaShell(cmd.Cmd):
         """
         match sub_cmd.lower():
             case "list":
-                print(f"local directory: {self.download_path}")
                 path: Path
                 for path in self.download_path.glob("*.md"):
                     stat = path.stat()
@@ -161,7 +160,24 @@ class NarumaShell(cmd.Cmd):
                 print(self.do_local.__doc__)
 
     def do_profile(self, sub_cmd: str):
-        match sub_cmd:
+        """Manipulates profile.
+
+        Your profile is a set of settings, which is individual for every
+        HedgeDoc remote.
+
+        Subcommands:
+        save: saves your current profile
+        load: loads profile from the profile path
+        list: lists available profiles
+        get:  shows current profile path
+        set:  sets profile path
+        show: shows your current profile
+        help: shows this help message
+
+        Note that the subcommands are not case-sensitive.
+
+        """
+        match sub_cmd.lower():
             case "save":
                 if hasattr(self, "remote"):
                     filename = url_to_profile_path(self.remote)
@@ -189,8 +205,12 @@ class NarumaShell(cmd.Cmd):
                 self.profile = profile
 
             case "list":
+                path: Path
                 for path in self.profile_path.glob("*.json"):
-                    print(path.name)
+                    stat = path.stat()
+                    print(
+                        f"{stat.st_size:>10} | {time.ctime(stat.st_ctime)} | {path.name}"
+                    )
 
             case "get":
                 print(f"profile directory: {self.profile_path}")
@@ -199,8 +219,11 @@ class NarumaShell(cmd.Cmd):
                 new_path = Path(input("new profiles path: "))
                 self.profile_path = new_path
 
-            case _:
-                print(f"current: {self.profile}")
+            case "show":
+                print(self.profile)
+
+            case "help" | _:
+                print(self.do_profile.__doc__)
 
     def do_bye(self, arg):
         """Closes program."""
