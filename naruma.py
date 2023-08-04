@@ -128,13 +128,37 @@ class NarumaShell(cmd.Cmd):
         print("cache was cleared")
         self.cache = None
 
-    def do_list(self, arg):
-        """Lists contents of download directory."""
-        print(f"download directory: {self.download_path}")
-        path: Path
-        for path in self.download_path.glob("*.md"):
-            stat = path.stat()
-            print(f"{stat.st_size:>10} | {time.ctime(stat.st_ctime)} | {path.name}")
+    def do_local(self, sub_cmd: str):
+        """
+        Manipulate the local directory path.
+
+        This is the directory where your downloaded notes will be saved.
+
+        Subcommands:
+            get: show the current local directory path
+            set: change the current local directory path
+            list: list notes in local directory
+        """
+        match sub_cmd.lower():
+            case "list":
+                print(f"local directory: {self.download_path}")
+                path: Path
+                for path in self.download_path.glob("*.md"):
+                    stat = path.stat()
+                    print(
+                        f"{stat.st_size:>10} | {time.ctime(stat.st_ctime)} | {path.name}"
+                    )
+
+            case "set":
+                new_path: Path = Path(input("Please enter new path: "))
+                self.download_path = new_path
+                print(f"set local directory to: {self.download_path}")
+
+            case "get":
+                print(f"current local directory: {self.download_path}")
+
+            case _:
+                print(self.do_local.__doc__)
 
     def do_profile(self, sub_cmd: str):
         match sub_cmd:
