@@ -1,13 +1,11 @@
 import cmd
 import json
-from os import mkdir
+import time
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
-from requests import Session, Response, codes
-import time
 
-# TODO: separate profile cwd and download cwd
+from requests import Session, codes
 
 
 def url_to_profile_path(url: str) -> str:
@@ -117,6 +115,8 @@ class NarumaShell(cmd.Cmd):
 
     def do_cache(self, arg):
         """Shows current cache."""
+        del arg
+
         if self.cache:
             note_id, content = self.cache
             print(f"{note_id} {len(content)}")
@@ -125,6 +125,7 @@ class NarumaShell(cmd.Cmd):
 
     def do_clear(self, arg):
         """Clears the cache."""
+        del arg
         print("cache was cleared")
         self.cache = None
 
@@ -225,21 +226,25 @@ class NarumaShell(cmd.Cmd):
             case "help" | _:
                 print(self.do_profile.__doc__)
 
-    def do_bye(self, arg):
+    def do_bye(self, arg) -> bool:
         """Closes program."""
+        del arg
+
         if hasattr(self, "session"):
             self.session.close()
         if self.cache is not None:
             print("Cache is not empty, please save cache to file")
-            return
+            return False
 
         return True
 
 
 if __name__ == "__main__":
     try:
-        from rich import print as print
+        import rich
     except ImportError:
         pass
+    else:
+        old_print, print = print, rich.print
 
     NarumaShell().cmdloop()
