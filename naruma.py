@@ -18,6 +18,11 @@ class NarumaShell(cmd.Cmd):
         super().__init__()
 
     def do_connect(self, remote_url: str) -> None:
+        """Connect to a remote HedgeDoc instance.
+
+        Args:
+            remote_url (str): root url of the instance
+        """
         if hasattr(self, "remote"):
             return
 
@@ -31,6 +36,11 @@ class NarumaShell(cmd.Cmd):
             print(response)
 
     def do_get(self, note_id: str) -> None:
+        """Downloads note and saves it to the stack.
+
+        Args:
+            note_id (str): note id
+        """
         download_url: str = f"{self.remote}/{note_id}/download"
         response = self.session.get(download_url)
         if response.status_code != codes.ok:
@@ -40,6 +50,11 @@ class NarumaShell(cmd.Cmd):
             print("saved note content to stack")
 
     def do_save(self, filename: str):
+        """Saves last entry of the stack.
+
+        Args:
+            filename (str): target path
+        """
         path = Path(filename)
         if path.exists():
             print(f"Path {path} already exists.")
@@ -54,6 +69,11 @@ class NarumaShell(cmd.Cmd):
             stream.write(content)
 
     def do_cwd(self, new_path: str):
+        """Returns cwd or sets new cwd.
+
+        Args:
+            new_path (str): new path for cwd
+        """
         if not new_path:
             print(f"current working directory: {self.cwd}")
             return
@@ -63,6 +83,7 @@ class NarumaShell(cmd.Cmd):
         self.cwd = cwd
 
     def do_bye(self, arg) -> bool:
+        """Closes program."""
         if hasattr(self, "session"):
             self.session.close()
         return True
