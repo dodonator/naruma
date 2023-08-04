@@ -1,8 +1,8 @@
 import cmd
-from collections import deque
 from pathlib import Path
 from typing import Optional
 from requests import Session, Response, codes
+import time
 
 
 class NarumaShell(cmd.Cmd):
@@ -90,6 +90,14 @@ class NarumaShell(cmd.Cmd):
         cwd = Path(new_path)
         print(f"set current working directory to: {cwd}")
         self.cwd = cwd
+
+    def do_list(self, arg):
+        """Lists content of cwd."""
+        print(f"cwd: {self.cwd}")
+        path: Path
+        for path in self.cwd.glob("*.md"):
+            stat = path.stat()
+            print(f"{stat.st_size:>10} | {time.ctime(stat.st_ctime)} | {path.name}")
 
     def do_cache(self, arg):
         """Shows current cache."""
