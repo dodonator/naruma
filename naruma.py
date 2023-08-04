@@ -1,6 +1,7 @@
 import cmd
 from collections import deque
 from pathlib import Path
+from typing import Optional
 from requests import Session, Response, codes
 
 
@@ -9,12 +10,12 @@ class NarumaShell(cmd.Cmd):
     prompt: str = "(naruma) "
     session: Session
     remote: str
-    stack: deque
+    cache: Optional[tuple[str, str]]
     cwd: Path
 
     def __init__(self):
-        self.stack = deque()
         self.cwd = Path.cwd()
+        self.cache = None
         super().__init__()
 
     def do_connect(self, remote_url: str) -> None:
@@ -45,9 +46,13 @@ class NarumaShell(cmd.Cmd):
         response = self.session.get(download_url)
         if response.status_code != codes.ok:
             response.raise_for_status()
-        else:
-            self.stack.append(response.text)
-            print("saved note content to stack")
+            return
+        if self.cache is not None:
+            print("cache isn't empty, please save content to file")
+            return
+
+        self.cache = (note_id, response.text)
+        print("saved note content to stack")
 
     def do_save(self, filename: str):
         """Saves last entry of the stack.
@@ -55,18 +60,22 @@ class NarumaShell(cmd.Cmd):
         Args:
             filename (str): target path
         """
-        path = Path(filename)
+        path = self.cwd / Path(f"{filename}.md")
         if path.exists():
             print(f"Path {path} already exists.")
             return
 
-        if not self.stack:
+        if self.cache is None:
             print("Nothing to save")
             return
 
-        content = self.stack.pop()
+        note_id, content = self.cache
+
         with path.open("w", encoding="UTF-8") as stream:
             stream.write(content)
+
+        print(f"written {note_id} to {path}")
+        self.cache = None
 
     def do_cwd(self, new_path: str):
         """Returns cwd or sets new cwd.
@@ -86,6 +95,10 @@ class NarumaShell(cmd.Cmd):
         """Closes program."""
         if hasattr(self, "session"):
             self.session.close()
+        if self.cache is not None:
+            print("Cache is not empty, please save cache to file")
+            return
+
         return True
 
 
