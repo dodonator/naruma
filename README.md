@@ -1,0 +1,2 @@
+# naruma
+HedgeDoc CLI
