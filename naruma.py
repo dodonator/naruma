@@ -1,8 +1,17 @@
 import cmd
+import json
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 from requests import Session, Response, codes
 import time
+
+
+def url_to_profile_path(url: str) -> Path:
+    parse_url = urlparse(url)
+    filename: str = f"{parse_url.netloc}.json"
+    path = Path(filename)
+    return path
 
 
 class NarumaShell(cmd.Cmd):
@@ -22,8 +31,14 @@ class NarumaShell(cmd.Cmd):
     @property
     def profile(self):
         remote = self.remote if hasattr(self, "remote") else None
-        self._profile = {"remote": remote, "cwd": self.cwd}
-        return self._profile
+        cwd: str = self.cwd.as_posix()
+        profile = {"remote": remote, "cwd": cwd}
+        return profile
+
+    @profile.setter
+    def profile(self, other: dict):
+        self.remote = other["remote"]
+        self.cwd = Path(other["cwd"])
 
     def do_connect(self, remote_url: str) -> None:
         """Connect to a remote HedgeDoc instance.
@@ -122,10 +137,31 @@ class NarumaShell(cmd.Cmd):
     def do_profile(self, sub_cmd: str):
         match sub_cmd:
             case "save":
-                pass
+                if hasattr(self, "remote"):
+                    profile_path = self.cwd / url_to_profile_path(self.remote)
+                else:
+                    filename = input("Please enter filename: ")
+                    profile_path = self.cwd / Path(f"{filename}.json")
+
+                with profile_path.open("w", encoding="UTF-8") as stream:
+                    json.dump(self.profile, stream)
+
+                print(f"saved profile to {profile_path}")
+
             case "load":
-                pass
-            case "show":
+                filename: str = input("please enter filename: ")
+                profile_path: Path = self.cwd / f"{filename}.json"
+
+                with profile_path.open("r", encoding="UTF-8") as stream:
+                    profile = json.load(stream)
+                    print(profile)
+                self.profile = profile
+
+            case "list":
+                for path in self.cwd.glob("*.json"):
+                    print(path.name)
+
+            case "show" | "":
                 print(self.profile)
 
     def do_bye(self, arg) -> bool:
