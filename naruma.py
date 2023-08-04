@@ -91,7 +91,7 @@ class NarumaShell(cmd.Cmd):
         print(f"set current working directory to: {cwd}")
         self.cwd = cwd
 
-    def do_cache(self):
+    def do_cache(self, arg):
         """Shows current cache."""
         if self.cache:
             note_id, content = self.cache
@@ -99,7 +99,7 @@ class NarumaShell(cmd.Cmd):
         else:
             print("empty")
 
-    def do_clear(self):
+    def do_clear(self, arg):
         """Clears the cache."""
         print("cache was cleared")
         self.cache = None
