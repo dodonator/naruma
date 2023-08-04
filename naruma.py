@@ -53,13 +53,13 @@ class NarumaShell(cmd.Cmd):
         Args:
             remote_url (str): root url of the instance
         """
-        if hasattr(self, "remote"):
-            return
-
-        if not remote_url:
+        if remote_url:
+            self.remote = remote_url
+        elif hasattr(self, "remote"):
             remote_url = self.remote
         else:
-            self.remote = remote_url
+            print("couldn't find remote")
+            return
 
         self.session = Session()
 
@@ -75,13 +75,15 @@ class NarumaShell(cmd.Cmd):
         Args:
             note_id (str): note id
         """
-        download_url: str = f"{self.remote}/{note_id}/download"
-        response = self.session.get(download_url)
-        if response.status_code != codes.ok:
-            response.raise_for_status()
-            return
         if self.cache is not None:
             print("cache isn't empty, please save content to file")
+            return
+
+        download_url: str = f"{self.remote}/{note_id}/download"
+        response = self.session.get(download_url)
+
+        if response.status_code != codes.ok:
+            response.raise_for_status()
             return
 
         self.cache = (note_id, response.text)
@@ -104,6 +106,8 @@ class NarumaShell(cmd.Cmd):
         if target_path.exists():
             print(f"Path {target_path} already exists.")
             return
+        else:
+            target_path.touch()
 
         note_id, content = self.cache
 
