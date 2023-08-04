@@ -1,5 +1,6 @@
 import cmd
 import json
+from os import mkdir
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -9,11 +10,10 @@ import time
 # TODO: separate profile cwd and download cwd
 
 
-def url_to_profile_path(url: str) -> Path:
+def url_to_profile_path(url: str) -> str:
     parse_url = urlparse(url)
     filename: str = f"{parse_url.netloc}.json"
-    path = Path(filename)
-    return path
+    return filename
 
 
 class NarumaShell(cmd.Cmd):
@@ -22,25 +22,32 @@ class NarumaShell(cmd.Cmd):
     session: Session
     remote: str
     cache: Optional[tuple[str, str]]
-    cwd: Path
-    _profile: dict
+    profile_path: Path
 
     def __init__(self):
-        self.cwd = Path.cwd()
+        cwd = Path.cwd()
         self.cache = None
+        self.profile_path = cwd / "profiles"
+        self.download_path = cwd / "notes"
         super().__init__()
 
     @property
     def profile(self):
         remote = self.remote if hasattr(self, "remote") else None
-        cwd: str = self.cwd.as_posix()
-        profile = {"remote": remote, "cwd": cwd}
+        profile_path: str = self.profile_path.as_posix()
+        download_path: str = self.download_path.as_posix()
+        profile = {
+            "remote": remote,
+            "profile_path": profile_path,
+            "download_path": download_path,
+        }
         return profile
 
     @profile.setter
     def profile(self, other: dict):
         self.remote = other["remote"]
-        self.cwd = Path(other["cwd"])
+        self.profile_path = Path(other["profile_path"])
+        self.download_path = Path(other["download_path"])
 
     def do_connect(self, remote_url: str) -> None:
         """Connect to a remote HedgeDoc instance.
@@ -65,7 +72,7 @@ class NarumaShell(cmd.Cmd):
             print(response)
 
     def do_get(self, note_id: str) -> None:
-        """Downloads note and saves it to the stack.
+        """Downloads note and saves it to the cache.
 
         Args:
             note_id (str): note id
@@ -80,52 +87,33 @@ class NarumaShell(cmd.Cmd):
             return
 
         self.cache = (note_id, response.text)
-        print("saved note content to stack")
+        print("saved note content to cache")
 
     def do_save(self, filename: str):
-        """Saves last entry of the stack.
+        """Saves last entry of the cache.
 
         Args:
             filename (str): target path
         """
-        path = self.cwd / Path(f"{filename}.md")
-        if path.exists():
-            print(f"Path {path} already exists.")
-            return
-
         if self.cache is None:
             print("Nothing to save")
             return
 
-        note_id, content = self.cache
+        if not self.download_path.exists():
+            self.download_path.mkdir()
 
-        with path.open("w", encoding="UTF-8") as stream:
-            stream.write(content)
-
-        print(f"written {note_id} to {path}")
-        self.cache = None
-
-    def do_cwd(self, new_path: str):
-        """Returns cwd or sets new cwd.
-
-        Args:
-            new_path (str): new path for cwd
-        """
-        if not new_path:
-            print(f"current working directory: {self.cwd}")
+        target_path = self.download_path / Path(f"{filename}.md")
+        if target_path.exists():
+            print(f"Path {target_path} already exists.")
             return
 
-        cwd = Path(new_path)
-        print(f"set current working directory to: {cwd}")
-        self.cwd = cwd
+        note_id, content = self.cache
 
-    def do_list(self, arg):
-        """Lists content of cwd."""
-        print(f"cwd: {self.cwd}")
-        path: Path
-        for path in self.cwd.glob("*.md"):
-            stat = path.stat()
-            print(f"{stat.st_size:>10} | {time.ctime(stat.st_ctime)} | {path.name}")
+        with target_path.open("w", encoding="UTF-8") as stream:
+            stream.write(content)
+
+        print(f"written {note_id} to {target_path}")
+        self.cache = None
 
     def do_cache(self, arg):
         """Shows current cache."""
@@ -140,41 +128,57 @@ class NarumaShell(cmd.Cmd):
         print("cache was cleared")
         self.cache = None
 
+    def do_list(self, arg):
+        """Lists contents of download directory."""
+        print(f"download directory: {self.download_path}")
+        path: Path
+        for path in self.download_path.glob("*.md"):
+            stat = path.stat()
+            print(f"{stat.st_size:>10} | {time.ctime(stat.st_ctime)} | {path.name}")
+
     def do_profile(self, sub_cmd: str):
         match sub_cmd:
             case "save":
                 if hasattr(self, "remote"):
-                    profile_path = self.cwd / url_to_profile_path(self.remote)
+                    filename = url_to_profile_path(self.remote)
                 else:
                     filename = input("Please enter filename: ")
-                    profile_path = self.cwd / Path(f"{filename}.json")
 
-                if not profile_path.exists():
-                    profile_path.touch()
+                target_path: Path = self.profile_path / filename
 
-                with profile_path.open("w", encoding="UTF-8") as stream:
+                if not self.profile_path.exists():
+                    self.profile_path.mkdir()
+
+                with target_path.open("w", encoding="UTF-8") as stream:
                     json.dump(self.profile, stream)
 
-                print(f"saved profile to {profile_path}")
+                print(f"saved profile to {target_path}")
 
             case "load":
                 filename: str = input("please enter filename: ")
-                profile_path: Path = self.cwd / f"{filename}.json"
+                target_path: Path = self.profile_path / f"{filename}.json"
 
-                with profile_path.open("r", encoding="UTF-8") as stream:
+                with target_path.open("r", encoding="UTF-8") as stream:
                     profile = json.load(stream)
 
                 print(f"loaded profile {profile}")
                 self.profile = profile
 
             case "list":
-                for path in self.cwd.glob("*.json"):
+                for path in self.profile_path.glob("*.json"):
                     print(path.name)
 
-            case "show" | "":
-                print(self.profile)
+            case "get":
+                print(f"profile directory: {self.profile_path}")
 
-    def do_bye(self, arg) -> bool:
+            case "set":
+                new_path = Path(input("new profiles path: "))
+                self.profile_path = new_path
+
+            case _:
+                print(f"current: {self.profile}")
+
+    def do_bye(self, arg):
         """Closes program."""
         if hasattr(self, "session"):
             self.session.close()
